@@ -1,0 +1,8 @@
+#! /bin/sh
+DIR=`dirname $0`
+
+if [ -x $DIR/openflow_exe -o -x $DIR/openflow_exe.exe ]; then
+  $DIR/openflow_exe -n $INET_ROOT/src:$DIR/../scenarios:$DIR -i $OPENFLOW4CORE_ROOT/images $*
+else
+  opp_run -l $DIR/OpenFlow -n $INET_ROOT/src:$DIR/../scenarios:$DIR -i $OPENFLOW4CORE_ROOT/images $*
+fi

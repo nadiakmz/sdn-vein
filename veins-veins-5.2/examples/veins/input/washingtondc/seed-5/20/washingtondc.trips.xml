@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- generated on 2022-10-26 03:08:24.937864 by $Id$ UNKNOWN
+  options: -n /Users/nafiulhassan/veins-5.1/examples/veins/input/washingtondc/20/washingtondc.net.xml -s 5 -e 20 -o /Users/nafiulhassan/veins-5.1/examples/veins/input/washingtondc/seed-5/20/washingtondc.trips.xml
+-->
+<routes xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/routes_file.xsd">
+    <trip id="0" depart="0.00" from="438958617#7" to="50428539#0"/>
+    <trip id="1" depart="1.00" from="510723128#2" to="637150476"/>
+    <trip id="2" depart="2.00" from="50428539#6" to="6057581#6"/>
+    <trip id="3" depart="3.00" from="-130908283#4" to="297273915#2"/>
+    <trip id="4" depart="4.00" from="687108617#0" to="466359339#0"/>
+    <trip id="5" depart="5.00" from="6054895#3" to="-397316195#1"/>
+    <trip id="6" depart="6.00" from="297296762#0" to="-589539523#2"/>
+    <trip id="7" depart="7.00" from="397303092#0" to="397321701#0"/>
+    <trip id="8" depart="8.00" from="-130772954" to="-509646034#1"/>
+    <trip id="9" depart="9.00" from="-6063421#3" to="6057421#0"/>
+    <trip id="10" depart="10.00" from="50524889#17" to="-466352083#1"/>
+    <trip id="11" depart="11.00" from="514191882#0" to="-421037430#2"/>
+    <trip id="12" depart="12.00" from="436136929#2" to="-397327934#2"/>
+    <trip id="13" depart="13.00" from="-120478418#2" to="589539534#0"/>
+    <trip id="14" depart="14.00" from="-50799230#1" to="-509645504#1"/>
+    <trip id="15" depart="15.00" from="983121553#1" to="589539535#0"/>
+    <trip id="16" depart="16.00" from="-923370378#2" to="756406654#0"/>
+    <trip id="17" depart="17.00" from="354202762" to="468469900#1"/>
+    <trip id="18" depart="18.00" from="-50431293#1" to="6063421#3"/>
+    <trip id="19" depart="19.00" from="469159258#1" to="864614824#0"/>
+</routes>

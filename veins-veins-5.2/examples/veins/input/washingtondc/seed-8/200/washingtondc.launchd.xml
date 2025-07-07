@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+    <!-- washingtondc.launchd.xml -->
+
+    <launch>
+    	<basedir path="/Users/nafiulhassan/veins-5.1/examples/veins/input/washingtondc/seed-8/200/" />
+    	<copy file="washingtondc.net.xml"/>
+    	<copy file="washingtondc.rou.xml"/>
+    	<copy file="washingtondc.poly.xml"/>
+    	<copy file="washingtondc.sumo.cfg" type="config"/>
+    </launch>

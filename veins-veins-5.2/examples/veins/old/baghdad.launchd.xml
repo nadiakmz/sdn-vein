@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+<!-- baghdad.launchd.xml -->
+
+<launch>
+    <copy file="baghdad.net.xml" />
+    <copy file="baghdad.rou.xml" />
+    <copy file="baghdad.poly.xml" />
+    <copy file="baghdad.sumo.cfg" type="config" />
+</launch>

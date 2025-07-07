@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+<!-- washingtondc100.launchd.xml -->
+
+<launch>
+    <copy file="washingtondc100.net.xml" />
+    <copy file="washingtondc100.rou.xml" />
+    <copy file="washingtondc100.poly.xml" />
+    <copy file="washingtondc100.sumo.cfg" type="config" />
+</launch>

@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- generated on 2022-10-26 03:15:48.143183 by $Id$ UNKNOWN
+  options: -n /Users/nafiulhassan/veins-5.1/examples/veins/input/washingtondc/30/washingtondc.net.xml -s 19 -e 30 -o /Users/nafiulhassan/veins-5.1/examples/veins/input/washingtondc/seed-19/30/washingtondc.trips.xml
+-->
+<routes xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/routes_file.xsd">
+    <trip id="0" depart="0.00" from="468469927#0" to="508158268"/>
+    <trip id="1" depart="1.00" from="345633935#5" to="321444902#3"/>
+    <trip id="2" depart="2.00" from="130889759#2" to="988487226"/>
+    <trip id="3" depart="3.00" from="-923370378#2" to="-436136927#1"/>
+    <trip id="4" depart="4.00" from="-6057421#1" to="-6055383#2"/>
+    <trip id="5" depart="5.00" from="108060074#0" to="-6057581#3"/>
+    <trip id="6" depart="6.00" from="-397303092#2" to="1051205228#0"/>
+    <trip id="7" depart="7.00" from="1049226223#1" to="397319281#0"/>
+    <trip id="8" depart="8.00" from="-50260020#5" to="-297380214#2"/>
+    <trip id="9" depart="9.00" from="-50260020#7" to="353283535#2"/>
+    <trip id="10" depart="10.00" from="130889758#0" to="49999718#1"/>
+    <trip id="11" depart="11.00" from="520468343#2" to="131052297#0"/>
+    <trip id="12" depart="12.00" from="-352411913#1" to="496467785#0"/>
+    <trip id="13" depart="13.00" from="50431292#0" to="130889758#3"/>
+    <trip id="14" depart="14.00" from="468434113#2" to="-983121553#5"/>
+    <trip id="15" depart="15.00" from="6057421#2" to="537114618#9"/>
+    <trip id="16" depart="16.00" from="509646034#0" to="696806636#0"/>
+    <trip id="17" depart="17.00" from="-537114618#2" to="354202762"/>
+    <trip id="18" depart="18.00" from="50009629#0" to="514191882#0"/>
+    <trip id="19" depart="19.00" from="130889758#2" to="-420781368#1"/>
+    <trip id="20" depart="20.00" from="439875857#0" to="-354202762"/>
+    <trip id="21" depart="21.00" from="476103811" to="-125568108#1"/>
+    <trip id="22" depart="22.00" from="296365351#0" to="297380211#0"/>
+    <trip id="23" depart="23.00" from="-397318414#1" to="297380211#4"/>
+    <trip id="24" depart="24.00" from="305660797#0" to="130788204#0"/>
+    <trip id="25" depart="25.00" from="6054255#3" to="589539518#0"/>
+    <trip id="26" depart="26.00" from="6053702#2" to="-589539518#3"/>
+    <trip id="27" depart="27.00" from="-130908282" to="130802360#1"/>
+    <trip id="28" depart="28.00" from="-397316186#1" to="47471725#0"/>
+    <trip id="29" depart="29.00" from="-6057544#2" to="-397327936#1"/>
+</routes>
