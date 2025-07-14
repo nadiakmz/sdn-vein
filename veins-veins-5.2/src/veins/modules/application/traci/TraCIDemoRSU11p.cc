@@ -32,7 +32,9 @@
 
 #include "veins/modules/messages/BaseFrame1609_4_m.h"
 
-
+#include "veins/base/modules/BaseMobility.h"
+#include "veins/base/utils/FindModule.h"
+#include <omnetpp.h>
 
 // Standard library includes
 #include <string>
@@ -52,9 +54,10 @@ const int RSU_UDP_PORT = 5000;
 void TraCIDemoRSU11p::initialize(int stage)
 {
     DemoBaseApplLayer::initialize(stage);
-
-    if (stage == INITSTAGE_APPLICATION_LAYER) {
-        udpSocket.setOutputGate(gate("lowerLayerOut"));
+    EV_INFO << "***************************rsu********************++++++++++++++++"<< endl;
+    if (stage == 0) {
+        EV_INFO << "***************************RSU Initialize********************++++++++++++++++"<< endl;
+        udpSocket.setOutputGate(gate("socketOut"));
         udpSocket.bind(L3Address(), RSU_UDP_PORT);
         EV_INFO << "RSU application bound to UDP port " << RSU_UDP_PORT << endl;
     }
@@ -63,6 +66,7 @@ void TraCIDemoRSU11p::initialize(int stage)
 
 void TraCIDemoRSU11p::onWSM(BaseFrame1609_4* wsm)
 {
+    EV_INFO << "***************************onwsm********************++++++++++++++++"<< endl;
     cPacket* payload = wsm->getEncapsulatedPacket()->dup();
 
     L3Address controllerIp = L3AddressResolver().resolve("open_flow_controller1");
@@ -84,32 +88,53 @@ void TraCIDemoRSU11p::onWSM(BaseFrame1609_4* wsm)
 // This function handles all incoming messages for the module
 void TraCIDemoRSU11p::handleMessage(cMessage* msg)
 {
-    if (msg->getArrivalGate() == gate("lowerLayerIn")) {
-        EV_INFO << "RSU received UDP packet from switch, preparing to broadcast wirelessly." << endl;
+    EV_INFO << "------------------------------handlemessage---------"<<endl;
 
-        cPacket* udpPacket = dynamic_cast<cPacket*>(msg);
-        if (!udpPacket) {
-            EV_ERROR << "Message from UDP is not a cPacket. Dropping." << endl;
-            delete msg;
-            return;
+
+        // Check if it's a wireless message from a vehicle
+        if (msg->getArrivalGate() == gate("lowerLayerIn")) {
+            if(TraCIDemo11pMessage* v2v_msg = dynamic_cast<TraCIDemo11pMessage*>(msg)){
+                EV_INFO << "RSU received TraCIDemo11pMessage from vehicle, forwarding to controller." << endl;
+
+                L3Address controllerIp = L3AddressResolver().resolve("open_flow_controller1");
+                int controllerPort = par("controllerPort");
+//                udpSocket.sendTo(v2v_msg, controllerIp, controllerPort);
+
+                cPacket* payload = new cPacket("VehicleDataPayload");
+                    // Set the size to match the original message for realistic bandwidth simulation
+                    payload->setByteLength(v2v_msg->getByteLength());
+
+                    // Send the new, clean packet. The UDPSocket can now attach its own control info.
+                    udpSocket.sendTo(payload, controllerIp, controllerPort);
+
+                    // We are now done with the original incoming wireless message.
+                    delete v2v_msg;
+
+
+    //            cPacket* udpPacket = new cPacket("DataForController");
+    //            udpPacket->encapsulate(payload);
+    //
+    //            udpSocket.sendTo(udpPacket, controllerIp, controllerPort);
+    //
+    //            delete v2v_msg; // Delete the original incoming message
+            }
         }
+        // Else, check if it's a UDP packet from the switch/controller
+        else if (msg->getArrivalGate() == gate("socketIn")) {
+            if (cPacket* udpPacket = dynamic_cast<cPacket*>(msg)){
+                EV_INFO << "RSU received UDP packet from switch, broadcasting to vehicles." << endl;
 
-        // FIX 1: Use the decapsulated packet directly as the application payload
-         cPacket* appMsgPayload = udpPacket->decapsulate();
+                cPacket* appMsgPayload = udpPacket->decapsulate();
 
-         BaseFrame1609_4* frame = new BaseFrame1609_4();
-         frame->setChannelNumber(172);
-               // FIX 3: Use MACAddress instead of L2Address
-//         frame->setRecipientAddress(MACAddress::BROADCAST_ADDRESS);
-         // FIX 2: Removed the setPriority() call
+                BaseFrame1609_4* frame = new BaseFrame1609_4();
+                frame->setChannelNumber(172);
+                frame->encapsulate(appMsgPayload);
 
-         frame->encapsulate(appMsgPayload); // Encapsulate the actual payload
 
-         sendDown(frame);
-
-         delete udpPacket;
-         return;
-    }
-
-    DemoBaseApplLayer::handleMessage(msg);
+                sendDown(frame);
+                delete udpPacket;
+            }
+        }else {
+            DemoBaseApplLayer::handleMessage(msg);
+        }
 }
