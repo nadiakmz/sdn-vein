@@ -44,7 +44,6 @@
 // ** FIX: Placing using namespace statements after all includes **
 using namespace veins;
 using namespace inet;
-using namespace openflow;
 
 Define_Module(TraCIDemoRSU11p);
 
@@ -100,23 +99,17 @@ void TraCIDemoRSU11p::handleMessage(cMessage* msg)
                 int controllerPort = par("controllerPort");
 //                udpSocket.sendTo(v2v_msg, controllerIp, controllerPort);
 
-                cPacket* payload = new cPacket("VehicleDataPayload");
-                    // Set the size to match the original message for realistic bandwidth simulation
-                    payload->setByteLength(v2v_msg->getByteLength());
+//                cPacket* payload = new cPacket("VehicleDataPayload");
+//                    // Set the size to match the original message for realistic bandwidth simulation
+//                    payload->setByteLength(v2v_msg->getByteLength());
 
                     // Send the new, clean packet. The UDPSocket can now attach its own control info.
-                    udpSocket.sendTo(payload, controllerIp, controllerPort);
+//                    udpSocket.sendTo(payload, controllerIp, controllerPort);
+                cPacket* payload = v2v_msg->dup();
+                udpSocket.sendTo(payload, controllerIp, controllerPort);
 
                     // We are now done with the original incoming wireless message.
                     delete v2v_msg;
-
-
-    //            cPacket* udpPacket = new cPacket("DataForController");
-    //            udpPacket->encapsulate(payload);
-    //
-    //            udpSocket.sendTo(udpPacket, controllerIp, controllerPort);
-    //
-    //            delete v2v_msg; // Delete the original incoming message
             }
         }
         // Else, check if it's a UDP packet from the switch/controller
@@ -133,6 +126,7 @@ void TraCIDemoRSU11p::handleMessage(cMessage* msg)
 
                 sendDown(frame);
                 delete udpPacket;
+                return;
             }
         }else {
             DemoBaseApplLayer::handleMessage(msg);
