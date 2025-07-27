@@ -35,6 +35,7 @@ void TraCIDemo11p::initialize(int stage)
         sentMessage = false;
         lastDroveAt = simTime();
         currentSubscribedServiceId = -1;
+        packetsSent = 0;
     }
 }
 
@@ -62,6 +63,15 @@ void TraCIDemo11p::onWSM(BaseFrame1609_4* frame)
         // repeat the received traffic update once in 2 seconds plus some random delay
         wsm->setSenderAddress(myId);
         wsm->setSerial(3);
+
+
+//        wsm->setHopCount(wsm->getHopCount() + 1);
+
+                // --- ADD THIS LINE ---
+                // Before forwarding the message, update it with this vehicle's current position.
+        wsm->setNodeMobilityCoord(mobility->getPositionAt(simTime()));
+
+
         scheduleAt(simTime() + 2 + uniform(0.01, 0.2), wsm->dup());
     }
 }
@@ -91,6 +101,23 @@ void TraCIDemo11p::handlePositionUpdate(cObject* obj)
 {
     DemoBaseApplLayer::handlePositionUpdate(obj);
 
+    const static std::vector<Coord> rsuPositions = {
+            {2246.59, 2038.29, 4.0},
+            {2280.59, 860.29,  1.0},
+            {1755.54, 1241.46, 1.0}
+        };
+    const double detectionRange = 300.0; // 300 meters
+    Coord vehiclePos = mobility->getPositionAt(simTime());
+    for (size_t i = 0; i < rsuPositions.size(); ++i) {
+            double distance = vehiclePos.distance(rsuPositions[i]);
+
+            // 4. If distance is less than the range, print a message
+            if (distance < detectionRange) {
+                EV_ERROR << "--> VEHICLE DEBUG: Vehicle " << myId
+                         << " is now " << distance << "m away from RSU[" << i << "]" << endl;
+            }
+        }
+
     // stopped for for at least 10s?
     if (mobility->getSpeed() < 1) {
         if (simTime() - lastDroveAt >= 10 && sentMessage == false) {
@@ -99,6 +126,7 @@ void TraCIDemo11p::handlePositionUpdate(cObject* obj)
 
             TraCIDemo11pMessage* wsm = new TraCIDemo11pMessage();
             populateWSM(wsm);
+            wsm->setNodeMobilityCoord(mobility->getPositionAt(simTime())); // Set the position
             wsm->setDemoData(mobility->getRoadId().c_str());
 
             // host is standing still due to crash
@@ -110,6 +138,7 @@ void TraCIDemo11p::handlePositionUpdate(cObject* obj)
             else {
                 // send right away on CCH, because channel switching is disabled
                 sendDown(wsm);
+                packetsSent++;
             }
         }
     }
@@ -117,3 +146,16 @@ void TraCIDemo11p::handlePositionUpdate(cObject* obj)
         lastDroveAt = simTime();
     }
 }
+void TraCIDemo11p::finish()
+{
+    recordScalar("packetsSent", packetsSent);
+}
+////beacon
+//void TraCIDemo11p::populateWSM(TraCIDemo11pMessage* wsm) {
+//    DemoBaseApplLayer::populateWSM(wsm);
+//
+//
+//    wsm->setNodeMobilityCoord(mobility->getPositionAt(simTime()));
+//    wsm->setIsBeacon(true); // Set your beacon flag here
+//    packetsSent++;
+//}
