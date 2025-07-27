@@ -28,9 +28,12 @@
 // Standard INET 3.8 headers
 #include "inet/transportlayer/contract/udp/UDPControlInfo_m.h"
 #include "inet/networklayer/common/L3AddressResolver.h"
-#include "inet/linklayer/common/MACAddress.h" // FIX 3: Include MACAddress header
+#include "inet/linklayer/common/MACAddress.h"
 
 #include "veins/modules/messages/BaseFrame1609_4_m.h"
+#include "veins/modules/messages/DemoSafetyMessage_m.h"
+#include "veins/base/phyLayer/PhyToMacControlInfo.h"
+
 
 #include "veins/base/modules/BaseMobility.h"
 #include "veins/base/utils/FindModule.h"
@@ -66,18 +69,38 @@ void TraCIDemoRSU11p::initialize(int stage)
 void TraCIDemoRSU11p::onWSM(BaseFrame1609_4* wsm)
 {
     EV_INFO << "***************************onwsm********************++++++++++++++++"<< endl;
-    cPacket* payload = wsm->getEncapsulatedPacket()->dup();
 
+
+    // Decapsulate to get the application message
+        TraCIDemo11pMessage* vehicleMessage = dynamic_cast<TraCIDemo11pMessage*>(wsm->getEncapsulatedPacket());
+        if (!vehicleMessage) {
+            delete wsm;
+            return;
+        }
+
+        // --- Get Sender's Position ---
+        // The position is attached to the frame as control info by the physical layer
+    Coord senderPos = vehicleMessage->getNodeMobilityCoord();
+        // --- Create a New Message for the Controller ---
+            // We create a new message to add the position data.
+    TraCIDemo11pMessage* msgForController = vehicleMessage->dup();
+
+            // Get the controller's address and port
     L3Address controllerIp = L3AddressResolver().resolve("open_flow_controller1");
     int controllerPort = par("controllerPort");
 
-    cPacket* udpPacket = new cPacket("DataForController");
-    udpPacket->encapsulate(payload);
+    EV_INFO << "RSU received message from vehicle " << msgForController->getSenderAddress()
+                << " at position (" << senderPos.x << "," << senderPos.y
+                << "), forwarding to controller." << endl;
 
-    EV_INFO << "RSU received WSM, forwarding payload to Controller " << controllerIp << ":" << controllerPort << endl;
-    udpSocket.sendTo(udpPacket, controllerIp, controllerPort);
+            // Send the new message. The socket takes ownership of the pointer.
+    udpSocket.sendTo(msgForController, controllerIp, controllerPort);
 
+            // We are now done with the original incoming frame.
     delete wsm;
+
+
+
 }
 
 //void TraCIDemoRSU11p::onWSA(DemoServiceAdvertisment* wsa) {
@@ -90,26 +113,64 @@ void TraCIDemoRSU11p::handleMessage(cMessage* msg)
     EV_INFO << "------------------------------handlemessage---------"<<endl;
 
 
-        // Check if it's a wireless message from a vehicle
+//        // Check if it's a wireless message from a vehicle
         if (msg->getArrivalGate() == gate("lowerLayerIn")) {
+            EV_ERROR << "--> RSU DEBUG: Received message from wireless NIC. Class Name is: " << msg->getClassName() << endl;
             if(TraCIDemo11pMessage* v2v_msg = dynamic_cast<TraCIDemo11pMessage*>(msg)){
+
+
                 EV_INFO << "RSU received TraCIDemo11pMessage from vehicle, forwarding to controller." << endl;
+
+                Coord senderPos = v2v_msg->getNodeMobilityCoord();
 
                 L3Address controllerIp = L3AddressResolver().resolve("open_flow_controller1");
                 int controllerPort = par("controllerPort");
-//                udpSocket.sendTo(v2v_msg, controllerIp, controllerPort);
 
-//                cPacket* payload = new cPacket("VehicleDataPayload");
-//                    // Set the size to match the original message for realistic bandwidth simulation
-//                    payload->setByteLength(v2v_msg->getByteLength());
-
-                    // Send the new, clean packet. The UDPSocket can now attach its own control info.
-//                    udpSocket.sendTo(payload, controllerIp, controllerPort);
                 cPacket* payload = v2v_msg->dup();
+                EV_INFO << "RSU received message from vehicle " << v2v_msg->getSenderAddress()
+                                << " at position (" << senderPos.x << "," << senderPos.y
+                                << "), forwarding to controller." << endl;
+
                 udpSocket.sendTo(payload, controllerIp, controllerPort);
 
                     // We are now done with the original incoming wireless message.
-                    delete v2v_msg;
+                delete v2v_msg;
+            }
+            else if (DemoSafetyMessage* bsm = dynamic_cast<DemoSafetyMessage*>(msg)){
+                EV_INFO << "RSU received a DemoSafetyMessage (Beacon) from vehicle, forwarding to controller." << endl;
+                // The BSM is a BaseFrame1609_4, which holds the sender's address and position.
+                    BaseFrame1609_4* frame = check_and_cast<BaseFrame1609_4*>(bsm);
+
+                    TraCIDemo11pMessage* msgForController = new TraCIDemo11pMessage();
+                    LAddress::L2Type senderAddress;
+
+
+                    cObject* ctrlInfo = bsm->getControlInfo();
+                    PhyToMacControlInfo* phyCtrlInfo = dynamic_cast<PhyToMacControlInfo*>(ctrlInfo);
+
+                    if (phyCtrlInfo) {
+                        senderAddress = phyCtrlInfo->getSourceAddress();
+                    }
+                    else {
+                                               // If control info is missing, we can't process the beacon
+                        EV_ERROR << "RSU received beacon without PhyToMacControlInfo. Cannot process." << endl;
+                        delete bsm;
+                    //                           return; // Stop processing this message
+                    }
+                    // --- FINAL FIX ---
+                    // Get the sender's address and position from the parent frame object.
+                    msgForController->setSenderAddress(senderAddress);
+                    msgForController->setNodeMobilityCoord(bsm->getSenderPos());
+
+
+                    msgForController->setDemoData("Beacon Forwarded by RSU");
+
+                    L3Address controllerIp = L3AddressResolver().resolve("open_flow_controller1");
+                    int controllerPort = par("controllerPort");
+
+                    udpSocket.sendTo(msgForController, controllerIp, controllerPort);
+
+                delete bsm;
             }
         }
         // Else, check if it's a UDP packet from the switch/controller
@@ -128,7 +189,7 @@ void TraCIDemoRSU11p::handleMessage(cMessage* msg)
                 delete udpPacket;
                 return;
             }
-        }else {
-            DemoBaseApplLayer::handleMessage(msg);
         }
+        else DemoBaseApplLayer::handleMessage(msg);
+
 }
