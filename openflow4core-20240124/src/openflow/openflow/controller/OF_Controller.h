@@ -7,7 +7,9 @@
 #include "openflow/messages/OFP_Packet_In_m.h"
 #include "openflow/messages/OFP_Hello_m.h"
 #include "openflow/openflow/controller/Switch_Info.h"
+
 #include <omnetpp.h>
+#include <fstream>
 
 namespace openflow{
 
@@ -15,6 +17,9 @@ class AbstractControllerApp;
 
 class OF_Controller: public cSimpleModule
 {
+private:
+    // This line DEFINES the variable as a member of the class
+    std::ofstream vehicleDataFile;
 public:
     OF_Controller();
     ~OF_Controller();
