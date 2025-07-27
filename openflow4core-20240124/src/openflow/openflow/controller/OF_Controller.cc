@@ -13,8 +13,18 @@
 #include "openflow/messages/OFP_Initialize_Handshake_m.h"
 #include "openflow/controllerApps/AbstractControllerApp.h"
 
+//#include "inet/networklayer/arp/ipv4/ARPPacket_m.h"
+//#include "openflow/messages/OFP_Flow_Mod_m.h"
+//#include "inet/linklayer/ethernet/EtherFrame_m.h"
+//#include "inet/networklayer/ipv4/IPv4Datagram.h"
+//#include "inet/transportlayer/udp/UDPPacket.h"
+//#include "veins/modules/application/traci/TraCIDemo11pMessage_m.h"
+//#include "inet/networklayer/arp/ipv4/ARPPacket_m.h"
+//#include "openflow/messages/OFP_Packet_Out_m.h"
+//#include "openflow/messages/OFP_Packet_In_m.h" //Needed for casting
 
 using namespace std;
+//using namespace veins;
 
 #define MSGKIND_BOOTED 100
 
@@ -70,6 +80,10 @@ void OF_Controller::initialize(){
     cMessage *booted = new cMessage("Booted");
     booted->setKind(MSGKIND_BOOTED);
     scheduleAt(simTime() + par("bootTime").doubleValue(), booted);
+
+//    //modify the code to log the data
+//    vehicleDataFile.open("vehicle_data_log.csv");
+//    vehicleDataFile << "simTime,rsuIP,vehicleID,packetSize\n";
 }
 
 
@@ -222,6 +236,9 @@ void OF_Controller::sendPacketOut(Open_Flow_Message *of_msg, TCPSocket *socket){
     Enter_Method_Silent();
     take(of_msg);
     EV << "OFA_controller::sendPacketOut" << endl;
+    // ADD THIS DEBUG LINE
+    EV_ERROR << "--> CONTROLLER SENDING COMMAND TO SWITCH <-- Command Type: " << of_msg->getName() << endl;
+
     emit(PacketOutSignalId,of_msg);
     socket->send(of_msg);
 }
@@ -316,6 +333,10 @@ void OF_Controller::finish(){
         name << "avgQueueSizeAt-" << iterMap2->first;
         recordScalar(name.str().c_str(),(iterMap2->second/1.0));
     }
+//    // --- ADDED: Close the log file when the simulation ends ---
+//    if (vehicleDataFile.is_open()) {
+//        vehicleDataFile.close();
+//    }
 }
 
 } /*end namespace openflow*/
