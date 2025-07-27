@@ -19,15 +19,17 @@
 // along with this program; if not, write to the Free Software
 // Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 //
-
 import veins.base.utils.Coord;
 import veins.modules.messages.BaseFrame1609_4;
 import veins.base.utils.SimpleAddress;
 
 namespace veins;
 
+// This packet extends the base frame and adds our new data fields.
 packet TraCIDemo11pMessage extends BaseFrame1609_4 {
     string demoData;
     LAddress::L2Type senderAddress = -1;
     int serial = 0;
+    Coord nodeMobilityCoord; // The vehicle's position
+    bool isBeacon = false;
 }
