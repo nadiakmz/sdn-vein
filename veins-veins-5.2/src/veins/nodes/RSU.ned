@@ -24,7 +24,6 @@ module RSU
 
     submodules:
         appl: TraCIDemoRSU11p {
-//        appl: <applType> like IBaseApplLayer {
             @display("p=200,50");
         }
         udp: UDP {
@@ -61,22 +60,6 @@ module RSU
         }
 
     connections allowunconnected:
-//        // All necessary connections for data and control
-//        udp.appOut++ --> appl.lowerLayerIn;
-//        udp.appIn++ <-- appl.lowerLayerOut;
-//        appl.lowerControlOut --> nic.upperControlIn;
-//        appl.lowerControlIn <-- nic.upperControlOut;
-//        
-//        networkLayer.transportOut++ --> udp.ipIn;
-//        networkLayer.transportIn++ <-- udp.ipOut;
-//        nic.upperLayerOut --> networkLayer.ifIn++; //fix 
-//        networkLayer.ifOut++ --> nic.upperLayerIn; //fix
-//        eth.upperLayerOut --> networkLayer.ifIn++;
-//        networkLayer.ifOut++ --> eth.upperLayerIn;
-//        
-//        eth.phys <--> ethg;
-//        veinsradioIn --> nic.radioIn;
-        
         // --- Veins wireless stack path ---
         nic.upperLayerOut --> appl.lowerLayerIn;
         appl.lowerLayerOut --> nic.upperLayerIn;
