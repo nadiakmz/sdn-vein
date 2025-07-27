@@ -23,6 +23,7 @@
 #pragma once
 
 #include "veins/modules/application/ieee80211p/DemoBaseApplLayer.h"
+#include "veins/modules/application/traci/TraCIDemo11pMessage_m.h"
 
 namespace veins {
 
@@ -43,11 +44,13 @@ namespace veins {
 class VEINS_API TraCIDemo11p : public DemoBaseApplLayer {
 public:
     void initialize(int stage) override;
+    virtual void finish() override;
 
 protected:
     simtime_t lastDroveAt;
     bool sentMessage;
     int currentSubscribedServiceId;
+    long packetsSent;
 
 protected:
     void onWSM(BaseFrame1609_4* wsm) override;
@@ -55,6 +58,8 @@ protected:
 
     void handleSelfMsg(cMessage* msg) override;
     void handlePositionUpdate(cObject* obj) override;
+
+//    void populateWSM(TraCIDemo11pMessage* wsm);
 };
 
 } // namespace veins
