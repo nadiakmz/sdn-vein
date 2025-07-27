@@ -27,5 +27,10 @@ simple TraCIDemoRSU11p extends DemoBaseApplLayer
 {
     @class(veins::TraCIDemoRSU11p);
     @display("i=block/app2");
+    int controllerPort = default(6653);
+    gates:
+        // Gates for the INET IP/UDP stack
+        input socketIn;
+        output socketOut;
 
 }
