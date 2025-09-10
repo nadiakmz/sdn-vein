@@ -9,6 +9,7 @@
 #include "inet/networklayer/arp/ipv4/ARPPacket_m.h"
 #include "openflow/messages/OFP_Packet_Out_m.h"
 #include "openflow/messages/OFP_Packet_In_m.h" //Needed for casting
+#include <sstream>
 // ---
 
 using namespace veins;
@@ -19,25 +20,41 @@ Define_Module(LoggingApp);
 
 void LoggingApp::initialize() {
     AbstractControllerApp::initialize();
+    inferLocalInterval = par("inferLocalInterval");
+
     packetsReceived = 0;
-//    vehicleDataFile.open("vehicle_data_log.csv");
+    districtID = par("districtID");
+
     const char* logFileName = par("vehicleDataFileName").stringValue();;
     vehicleDataFile.open(logFileName);
     EV_ERROR<< "test app logs: "<<logFileName<< endl;
-    vehicleDataFile << "simTime,rsuIP,vehicleID,packetSize,senderPosX,senderPosY,endToEndDelay\n";
+    vehicleDataFile << "simTime,districtID,rsuIP,vehicleID,packetSize,senderPosX,senderPosY,endToEndDelay,senderSpeed,senderDirection\n";
     // This condition is true if the stream is in a failed state
     if (!vehicleDataFile.is_open()) {
         EV_ERROR<< "Error: Could not open file: " << logFileName << std::endl;
     }
+    logBuffer.reserve(BATCH_SIZE);
+    inferLocalTimer = new cMessage("inferLocalTimer");
+    scheduleAt(simTime() + inferLocalInterval, inferLocalTimer);
 }
 
 void LoggingApp::finish() {
     recordScalar("packetsReceived", packetsReceived);
+    flushBuffer();
     if (vehicleDataFile.is_open()) {
         vehicleDataFile.close();
     }
 }
-
+void LoggingApp::handleMessage(cMessage *msg)
+    {
+        // TODO - Generated method body
+        if (msg == inferLocalTimer) {
+            flushBuffer();
+            scheduleAt(simTime() + inferLocalInterval, inferLocalTimer);
+        } else {
+            delete msg;
+        }
+    }
 void LoggingApp::receiveSignal(cComponent *src, simsignal_t id, cObject *obj, cObject *details) {
     EV << "OFA_controller::LoggingApp:recieved++++++++++++++++++++++++++++++++++++++++++++++++++++++++" << endl;
     if (id == PacketInSignalId) {
@@ -72,6 +89,10 @@ void LoggingApp::receiveSignal(cComponent *src, simsignal_t id, cObject *obj, cO
                   EV_ERROR<< "vehiclemessage: " << vehicleMessage<<endl;
                   if (!vehicleMessage) return;
 
+                  packetsReceived++;
+
+                  std::stringstream ss;
+
                   // Now we can extract all the information
                   simtime_t time = simTime();
                   L3Address rsuIP = ipDatagram->getSrcAddress(); // Get the source IP from the IP header
@@ -80,20 +101,29 @@ void LoggingApp::receiveSignal(cComponent *src, simsignal_t id, cObject *obj, cO
                   std::string data = vehicleMessage->getDemoData();
                   int sequenceNum = vehicleMessage->getSerial();
                   Coord senderPos = vehicleMessage->getNodeMobilityCoord();
+                  double speed = vehicleMessage->getSpeed();
+                  double direction = vehicleMessage->getDirection();
 
                   // Calculate End-to-End Delay (Latency)
                   simtime_t creationTime = vehicleMessage->getTimestamp();
                   simtime_t delay = time - creationTime;
 
+                  ss << time << "," << districtID << "," << rsuIP << "," << vehicleID << ","
+                          << packetSize << "," << senderPos.x << "," << senderPos.y
+                          << "," << delay<< ","<<speed<<","<<direction;
 
-                  vehicleDataFile << time << "," << rsuIP << "," << vehicleID << "," << packetSize << "," << senderPos.x << "," << senderPos.y << "," << delay <<std::endl;
-                  vehicleDataFile.flush(); // Ensure data is written immediately for debugging
+                  logBuffer.push_back(ss.str());
+                  if (logBuffer.size() >= BATCH_SIZE) {
+                    flushBuffer();
+                  }
+//                  vehicleDataFile << time << "," << rsuIP << "," << vehicleID << "," << packetSize << "," << senderPos.x << "," << senderPos.y << "," << delay<< ","<<speed<<","<<direction <<std::endl;
+//                  vehicleDataFile.flush(); // Ensure data is written immediately for debugging
 
-                  EV_ERROR << "Full Vehicle Message Details: " << vehicleMessage->str() << endl;
                   EV_INFO << "Received data: vehicleID=" << vehicleID
                           << ", sequenceNum=" << sequenceNum
-                          << ", data='" << data << "'" << endl;
-                  EV_ERROR<< "log: " << time << "," << rsuIP << "," << vehicleID << "," << packetSize <<"," << delay << std::endl;
+                          << ", data='" << data <<
+                          "' packetsReceived=" << packetsReceived << endl;
+//                  EV_ERROR<< "log: " << time << "," << rsuIP << "," << vehicleID << "," << packetSize <<"," << delay << ","<<speed<<","<<direction<< std::endl;
               }
     }
 
@@ -102,5 +132,12 @@ void LoggingApp::receiveSignal(cComponent *src, simsignal_t id, cObject *obj, cO
 
             // --- END OF LOGGING LOGIC ---
 }
-
+void LoggingApp::flushBuffer() {
+    EV_INFO << "Writing a batch of " << logBuffer.size() << " log entries to file." << endl;
+    for (const auto& line : logBuffer) {
+        vehicleDataFile << line << std::endl;
+    }
+    // Clear the buffer for the next batch
+    logBuffer.clear();
+}
 } // namespace openflow
