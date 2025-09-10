@@ -36,6 +36,11 @@ void TraCIDemo11p::initialize(int stage)
         lastDroveAt = simTime();
         currentSubscribedServiceId = -1;
         packetsSent = 0;
+        // If beaconing is enabled in the .ini file, start our custom beacon timer
+        if (par("sendBeacons").boolValue()) {
+                    beaconTimer = new cMessage("beaconTimer");
+//                    scheduleAt(simTime() + par("beaconInterval").doubleValue(), beaconTimer);
+        }
     }
 }
 
@@ -53,34 +58,48 @@ void TraCIDemo11p::onWSA(DemoServiceAdvertisment* wsa)
 
 void TraCIDemo11p::onWSM(BaseFrame1609_4* frame)
 {
+    EV_ERROR<< "DEBUG:VEHICLE: onWSM: the packet is: "<< frame->getClassName()<<endl;
     TraCIDemo11pMessage* wsm = check_and_cast<TraCIDemo11pMessage*>(frame);
+    if (wsm->getHopCount()<3){
 
-    findHost()->getDisplayString().setTagArg("i", 1, "green");
+        EV_ERROR<< "DEBUG:VEHICLE: HOP COUNT IS:" << wsm->getHopCount()<<endl;
+        findHost()->getDisplayString().setTagArg("i", 1, "green");
 
-    if (mobility->getRoadId()[0] != ':') traciVehicle->changeRoute(wsm->getDemoData(), 9999);
-    if (!sentMessage) {
-        sentMessage = true;
-        // repeat the received traffic update once in 2 seconds plus some random delay
-        wsm->setSenderAddress(myId);
-        wsm->setSerial(3);
+        if (mobility->getRoadId()[0] != ':') traciVehicle->changeRoute(wsm->getDemoData(), 9999);
+        if (!sentMessage) {
+            sentMessage = true;
+            // repeat the received traffic update once in 2 seconds plus some random delay
+            wsm->setSenderAddress(myId);
+            wsm->setSerial(3);
+            wsm->setHopCount(wsm->getHopCount() + 1);
+            wsm->setSpeed(mobility->getSpeed());
+
+            Coord headingVector = mobility->getCurrentDirection();
+            double angleInRadians = atan2(headingVector.y, headingVector.x);
+            wsm->setDirection(angleInRadians);
+
+                    // --- ADD THIS LINE ---
+                    // Before forwarding the message, update it with this vehicle's current position.
 
 
-//        wsm->setHopCount(wsm->getHopCount() + 1);
-
-                // --- ADD THIS LINE ---
-                // Before forwarding the message, update it with this vehicle's current position.
-        wsm->setNodeMobilityCoord(mobility->getPositionAt(simTime()));
+            wsm->setNodeMobilityCoord(mobility->getPositionAt(simTime()));
 
 
-        scheduleAt(simTime() + 2 + uniform(0.01, 0.2), wsm->dup());
+            scheduleAt(simTime() + 2 + uniform(0.01, 0.2), wsm->dup());
+        }
     }
+    delete wsm;
 }
+
 
 void TraCIDemo11p::handleSelfMsg(cMessage* msg)
 {
+    EV_ERROR<< "HandleSelfMsg, the packet is: "<< msg->getClassName()<<endl;
     if (TraCIDemo11pMessage* wsm = dynamic_cast<TraCIDemo11pMessage*>(msg)) {
         // send this message on the service channel until the counter is 3 or higher.
         // this code only runs when channel switching is enabled
+        wsm->setHopCount(wsm->getHopCount() + 1);
+        wsm->setSenderType(VEHICLE);
         sendDown(wsm->dup());
         wsm->setSerial(wsm->getSerial() + 1);
         if (wsm->getSerial() >= 3) {
@@ -92,13 +111,49 @@ void TraCIDemo11p::handleSelfMsg(cMessage* msg)
             scheduleAt(simTime() + 1, wsm);
         }
     }
+    else if (msg->getKind()== SEND_BEACON_EVT){
+        DemoSafetyMessage* bsm = new DemoSafetyMessage();
+        int pktSize = intuniform(100, 300);
+
+//        bsm->setBitLength(headerLength);
+        bsm->setByteLength(pktSize);
+
+        bsm->setHopCount(0);
+        bsm->setTimestamp(simTime());
+
+        Coord headingVector = mobility->getCurrentDirection();
+        double angleInRadians = atan2(headingVector.y, headingVector.x);
+        bsm->setDirection(angleInRadians);
+        bsm->setSpeed(mobility->getSpeed());
+
+        bsm->setSenderPos(curPosition);
+        bsm->setSenderSpeed(curSpeed);
+        bsm->setPsid(-1);
+        bsm->setChannelNumber(static_cast<int>(Channel::cch));
+//        bsm->addBitLength(beaconLengthBits);
+        bsm->setUserPriority(beaconUserPriority);
+        bsm->setSenderType(VEHICLE);
+
+        sendDown(bsm);
+        packetsSent++;
+        scheduleAt(simTime() + beaconInterval, sendBeaconEvt);
+    }
+//    else if (msg == beaconTimer) { //beacon test
+//        TraCIDemo11pMessage* bsm = new TraCIDemo11pMessage();
+//        populateWSM(bsm); // Fill the beacon with data
+//        sendDown(bsm);    // Send the beacon
+//        scheduleAt(simTime() + par("beaconInterval").doubleValue(), beaconTimer); // Reschedule
+//        return;
+//    }
     else {
+
         DemoBaseApplLayer::handleSelfMsg(msg);
     }
 }
-
 void TraCIDemo11p::handlePositionUpdate(cObject* obj)
 {
+
+
     DemoBaseApplLayer::handlePositionUpdate(obj);
 
     const static std::vector<Coord> rsuPositions = {
@@ -120,26 +175,29 @@ void TraCIDemo11p::handlePositionUpdate(cObject* obj)
 
     // stopped for for at least 10s?
     if (mobility->getSpeed() < 1) {
+        EV_ERROR<< "HandlePositionUpdate, the speed is less than 1" <<endl;
         if (simTime() - lastDroveAt >= 10 && sentMessage == false) {
+
             findHost()->getDisplayString().setTagArg("i", 1, "red");
             sentMessage = true;
 
             TraCIDemo11pMessage* wsm = new TraCIDemo11pMessage();
-            populateWSM(wsm);
-            wsm->setNodeMobilityCoord(mobility->getPositionAt(simTime())); // Set the position
-            wsm->setDemoData(mobility->getRoadId().c_str());
+
+//            populateWSM(wsm);
+//            wsm->setNodeMobilityCoord(mobility->getPositionAt(simTime())); // Set the position
+//            wsm->setDemoData(mobility->getRoadId().c_str());
 
             // host is standing still due to crash
-            if (dataOnSch) {
-                startService(Channel::sch2, 42, "Traffic Information Service");
-                // started service and server advertising, schedule message to self to send later
-                scheduleAt(computeAsynchronousSendingTime(1, ChannelType::service), wsm);
-            }
-            else {
-                // send right away on CCH, because channel switching is disabled
-                sendDown(wsm);
-                packetsSent++;
-            }
+//            if (dataOnSch) {
+//                startService(Channel::sch2, 42, "Traffic Information Service");
+//                // started service and server advertising, schedule message to self to send later
+//                scheduleAt(computeAsynchronousSendingTime(1, ChannelType::service), wsm);
+//            }
+//            else {
+//                // send right away on CCH, because channel switching is disabled
+//                sendDown(wsm);
+//                packetsSent++;
+//            }
         }
     }
     else {
@@ -150,6 +208,7 @@ void TraCIDemo11p::finish()
 {
     recordScalar("packetsSent", packetsSent);
 }
+//
 ////beacon
 //void TraCIDemo11p::populateWSM(TraCIDemo11pMessage* wsm) {
 //    DemoBaseApplLayer::populateWSM(wsm);
@@ -157,5 +216,8 @@ void TraCIDemo11p::finish()
 //
 //    wsm->setNodeMobilityCoord(mobility->getPositionAt(simTime()));
 //    wsm->setIsBeacon(true); // Set your beacon flag here
-//    packetsSent++;
+//    wsm->setTimestamp(simTime());
+////    packetsSent++;
 //}
+
+

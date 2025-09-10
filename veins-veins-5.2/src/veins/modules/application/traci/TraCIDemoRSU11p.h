@@ -33,14 +33,9 @@
 #include "veins/modules/messages/DemoServiceAdvertisement_m.h" // For DemoServiceAdvertisment
 #include "veins/modules/messages/DemoSafetyMessage_m.h"
 #include "veins/modules/application/traci/TraCIDemo11pMessage_m.h"
+#include <sys/stat.h>
+#include <fstream>
 
-// For your custom OpenFlow messages
-#include "openflow/messages/FromOpenFlowSwitchMessage_m.h"
-#include "openflow/messages/ToOpenFlowSwitchMessage_m.h"
-
-namespace openflow {
-class FromOpenFlowSwitchMessage;
-}
 namespace veins {
 
 /**
@@ -49,12 +44,35 @@ namespace veins {
  */
 class VEINS_API TraCIDemoRSU11p : public DemoBaseApplLayer {
 protected:
+    struct AttachState {
+        simtime_t expireTime;  // after this, RSU accepts vehicle again
+    };
+
+    std::map<int, AttachState> detachTable;  // vehicles temporarily blocked
+    simtime_t detachTTL = 10; // seconds
+
     inet::UDPSocket udpSocket;
+    std::set<int> attachedVehicles;
+    bool enforceTable = false;
+
+    long rxCount = 0, txCount = 0, dropCount = 0;
+    cMessage *statsTimer;
+    simtime_t statsInterval = 1.0;
+    std::string RSU_stats_DataFileName;
+    std::string myIP = "0.0.0.0";
+
+
 protected:
     void onWSM(BaseFrame1609_4* wsm) override;
 //    void onWSA(DemoServiceAdvertisment* wsa) override;
 //    void handleMessageFromOpenFlowSwitch(openflow::FromOpenFlowSwitchMessage* msg);
     void handleMessage(cMessage* msg) override;
+    void handleAttachVehicle(int vehicleID);
+    void handleDetachVehicle(int vehicleID);
+    void setIP();
+//    inline void appendRSUCsv(const std::string& path,
+//                          const std::string& header,
+//                          const std::string& line) ;
 //    void handleBSM(DemoSafetyMessage* bsm);
 //    void handleHostStateNotification(HostState::States state);
 //    void handleSelfMessage(cMessage* msg);

@@ -51,6 +51,7 @@ protected:
     bool sentMessage;
     int currentSubscribedServiceId;
     long packetsSent;
+    cMessage* beaconTimer; // <-- ADD THIS
 
 protected:
     void onWSM(BaseFrame1609_4* wsm) override;

@@ -28,9 +28,12 @@ simple TraCIDemoRSU11p extends DemoBaseApplLayer
     @class(veins::TraCIDemoRSU11p);
     @display("i=block/app2");
     int controllerPort = default(6653);
+    string RSU_stats_DataFileName = default("default_rsu_stats.csv"); // <-- ADD THIS LINE
+    
     gates:
         // Gates for the INET IP/UDP stack
         input socketIn;
         output socketOut;
+        input controlIn; 
 
 }

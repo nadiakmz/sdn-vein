@@ -27,4 +27,5 @@ simple TraCIDemo11p extends DemoBaseApplLayer
 {
     @class(veins::TraCIDemo11p);
     @display("i=block/app2");
+    
 }

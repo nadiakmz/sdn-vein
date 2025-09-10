@@ -25,6 +25,11 @@ import veins.base.utils.SimpleAddress;
 
 namespace veins;
 
+//enum SenderType {
+//    VEHICLE = 0;
+//    RSU = 1;
+//}
+
 // This packet extends the base frame and adds our new data fields.
 packet TraCIDemo11pMessage extends BaseFrame1609_4 {
     string demoData;
@@ -32,4 +37,8 @@ packet TraCIDemo11pMessage extends BaseFrame1609_4 {
     int serial = 0;
     Coord nodeMobilityCoord; // The vehicle's position
     bool isBeacon = false;
+    int hopCount = 0;
+    double speed;
+    double direction; 
+//    SenderType senderType = VEHICLE; 
 }
