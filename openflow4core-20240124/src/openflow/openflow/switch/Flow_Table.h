@@ -22,6 +22,7 @@ public:
      * @brief For lifecycle: clears all entries from the table.
      */
     virtual void clear();
+    int size();
 
 
 private:

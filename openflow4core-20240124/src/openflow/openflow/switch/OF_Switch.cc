@@ -114,6 +114,7 @@ void OF_Switch::initialize(){
     }
 
 
+
 }
 
 
@@ -168,6 +169,27 @@ void OF_Switch::handleMessage(cMessage *msg){
             emit(bufferSize,buffer.size());
         }
     }
+//    // --- START OF DEBUG CODE ---
+//      EV_ERROR << "--- SWITCH INTERFACE DEBUG ---" << endl;
+//      EV_ERROR << "Switch Name: " << getParentModule()->getFullName() << endl;
+//
+//      // The InterfaceTable module is a sibling to this OF_Switch module.
+//      cModule* switchNode = getParentModule();
+//      IInterfaceTable* interfaceTable = getModuleFromPar<IInterfaceTable>(par("interfaceTableModule"), switchNode);
+//
+//      if (interfaceTable) {
+//          // Loop through all network interfaces on the switch
+//          for (int i = 0; i < interfaceTable->getNumInterfaces(); ++i) {
+//              InterfaceEntry* entry = interfaceTable->getInterface(i);
+//
+//              // Print the name, MAC address, and IP address for each interface
+//              EV_ERROR << "  Interface: " << entry->getName()
+//                       << " | MAC: " << entry->getMacAddress().str()
+//                       << " | IP: " << entry->getIPv4Address() << endl;
+//          }
+//      }
+//      EV_ERROR << "-----------------------------" << endl;
+//      // --- END OF DEBUG CODE ---
 }
 
 void OF_Switch::connect(const char *addressToConnect){
@@ -226,6 +248,7 @@ void OF_Switch::processQueuedMsg(cMessage *data_msg){
                     handlePacketOutMessage(of_msg);
                     break;
                 default:
+                    EV_ERROR << "--> SWITCH DEBUG: Received unknown message type from controller. Type ID: " << type << endl;
                     break;
                 }
         }

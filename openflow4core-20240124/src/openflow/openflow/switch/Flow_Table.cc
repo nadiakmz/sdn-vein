@@ -57,4 +57,7 @@ void Flow_Table::clear() {
     entryList.clear();
 }
 
+int Flow_Table::size() {
+    return entryList.size();
+}
 } /*end namespace openflow*/
