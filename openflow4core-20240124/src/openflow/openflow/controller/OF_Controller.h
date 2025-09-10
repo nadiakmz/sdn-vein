@@ -3,6 +3,7 @@
 #define OF_CONTROLLER_H_
 
 #include "inet/transportlayer/contract/tcp/TCPSocket.h"
+#include "inet/transportlayer/contract/udp/UDPSocket.h"
 #include "openflow/messages/Open_Flow_Message_m.h"
 #include "openflow/messages/OFP_Packet_In_m.h"
 #include "openflow/messages/OFP_Hello_m.h"
@@ -20,6 +21,10 @@ class OF_Controller: public cSimpleModule
 private:
     // This line DEFINES the variable as a member of the class
     std::ofstream vehicleDataFile;
+
+////    UPD MODIFICATION START
+//    inet::UDPSocket socket; // <-- Change this from TCPSocket to UDPSocket
+////    UPD MODIFICATION END
 public:
     OF_Controller();
     ~OF_Controller();

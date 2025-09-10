@@ -32,6 +32,9 @@ module Open_Flow_Controller
         string routingFile = default("");
         int numExtInterfaces = default(0);
         double serviceTime @unit("s") = default(0s);
+        
+        
+//        string vehicleDataFileName = default("default_log.csv"); // <-- ADD THIS
 
         routingTable.forwarding = this.forwarding;
         routingTable.multicastForwarding = this.multicastForwarding;   // for IPv4, IPv6, Generic
