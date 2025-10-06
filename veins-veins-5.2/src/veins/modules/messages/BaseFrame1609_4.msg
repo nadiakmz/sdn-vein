@@ -23,6 +23,10 @@
 import veins.base.utils.SimpleAddress;
 
 namespace veins;
+enum SenderType {
+    VEHICLE = 0;
+    RSU = 1;
+}
 
 packet BaseFrame1609_4 {
     //Channel Number on which this packet was sent
@@ -33,4 +37,18 @@ packet BaseFrame1609_4 {
     int psid = 0;
     //Recipient of frame (-1 for any)
     LAddress::L2Type recipientAddress = -1;
+    LAddress::L2Type originalSenderId = -1;
+    SenderType senderType = RSU;
+    bool sendFromCH = false;
+    bool hasCluster = false;
+    uint64_t TxPktsCumulative = 0;
+    //---------------svm----------------
+	double SVM_throughput_bps;
+    double SVM_tx_pps;
+    double SVM_rx_pps;
+    double SVM_plr;
+    double SVM_dropCount;
+    int SVM_density;
+    //---------------svm----------------
+
 }
