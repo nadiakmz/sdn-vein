@@ -1,1 +1,1 @@
-simTime,districtID,rsuIP,vehicleID,packetSize,senderPosX,senderPosY,endToEndDelay,senderSpeed,senderDirection,source_file
+simTime,districtID,rsuIP,vehicleID,packetSize,senderPosX,senderPosY,endToEndDelay,senderSpeed,senderDirection,hasCluster,sendFromCH,txPktsCumulative,source_file
