@@ -35,6 +35,8 @@
 #include "veins/modules/application/traci/TraCIDemo11pMessage_m.h"
 #include <sys/stat.h>
 #include <fstream>
+#include <unordered_map>   // <-- required for std::unordered_map
+
 
 namespace veins {
 
@@ -62,14 +64,43 @@ protected:
     std::string myIP = "0.0.0.0";
 
 
+    // ---- svm based ----
+    uint64_t rxPktsWin = 0;
+    uint64_t rxBytesWin = 0;
+
+    uint64_t totalTxPkts = 0;
+    uint64_t totalRxPkts = 0;
+    uint64_t lastTotalTxPkts = 0;
+    uint64_t lastTotalRxPkts = 0;
+
+
+        // ---- vehicle TX cumulative counters from beacons ----
+    std::unordered_map<int, uint64_t> vehTxCumLatest;   // vehId -> cumulative TX pkts
+    std::unordered_map<int, uint64_t> vehTxCumBaseline; // snapshot at last window edge
+
+    double lastRxpps=0;
+    double lastTxpps=0;
+    double lastThroughput=0;
+    double lastPlr=0;
+    double lastDropCount=0;
+    double lastDensity = 0;
+    std::unordered_set<long> activeVehicles; // track unique vids this second
+//    ------------------svm based---------------
+
+
 protected:
     void onWSM(BaseFrame1609_4* wsm) override;
 //    void onWSA(DemoServiceAdvertisment* wsa) override;
 //    void handleMessageFromOpenFlowSwitch(openflow::FromOpenFlowSwitchMessage* msg);
     void handleMessage(cMessage* msg) override;
     void handleAttachVehicle(int vehicleID);
-    void handleDetachVehicle(int vehicleID);
+    void handleDetachVehicle(int vehicleID,  std::string& rrtime);
+    void sendClusterMembers(int chId, const std::vector<int>& members);
+    void sendClusterHead(int chId, const std::vector<int>& members);
+    cModule* findVehicleModule(int vehicleId);
     void setIP();
+
+    void writeNetworkMetricSVM(); //svm
 //    inline void appendRSUCsv(const std::string& path,
 //                          const std::string& header,
 //                          const std::string& line) ;

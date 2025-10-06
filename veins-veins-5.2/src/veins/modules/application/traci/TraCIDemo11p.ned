@@ -27,5 +27,9 @@ simple TraCIDemo11p extends DemoBaseApplLayer
 {
     @class(veins::TraCIDemo11p);
     @display("i=block/app2");
+    bool amCH = false;
+    double clusterInterval @unit(s) = default(5s);
+//    gates:
+//        input controlIn; 
     
 }

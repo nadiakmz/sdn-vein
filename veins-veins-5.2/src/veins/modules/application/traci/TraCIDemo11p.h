@@ -50,8 +50,15 @@ protected:
     simtime_t lastDroveAt;
     bool sentMessage;
     int currentSubscribedServiceId;
-    long packetsSent;
+    uint64_t packetsSent;
     cMessage* beaconTimer; // <-- ADD THIS
+    bool amCH = false;
+    bool amMember = false;
+    int CHId = -1;
+    std::vector<int> clusterMembers;
+    simtime_t expireClusterInfoTime;
+    cMessage *clusterTimer = nullptr;
+    simtime_t clusterInterval = 10;
 
 protected:
     void onWSM(BaseFrame1609_4* wsm) override;
@@ -59,6 +66,7 @@ protected:
 
     void handleSelfMsg(cMessage* msg) override;
     void handlePositionUpdate(cObject* obj) override;
+    void handleLowerMsg(cMessage* msg) override;
 
 //    void populateWSM(TraCIDemo11pMessage* wsm);
 };

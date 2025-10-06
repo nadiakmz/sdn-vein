@@ -23,8 +23,12 @@
 #include "veins/modules/application/traci/TraCIDemo11p.h"
 
 #include "veins/modules/application/traci/TraCIDemo11pMessage_m.h"
+#include "veins/modules/messages/ClusterCommand_m.h"
+#include <string>
+#include <fstream>
 
 using namespace veins;
+
 
 Define_Module(veins::TraCIDemo11p);
 
@@ -36,6 +40,11 @@ void TraCIDemo11p::initialize(int stage)
         lastDroveAt = simTime();
         currentSubscribedServiceId = -1;
         packetsSent = 0;
+        clusterInterval = par("clusterInterval");
+
+        clusterTimer = new cMessage("clusterTimer");
+
+
         // If beaconing is enabled in the .ini file, start our custom beacon timer
         if (par("sendBeacons").boolValue()) {
                     beaconTimer = new cMessage("beaconTimer");
@@ -44,6 +53,72 @@ void TraCIDemo11p::initialize(int stage)
     }
 }
 
+//this ,method is related to clustering section. comment it if you don't want it
+void TraCIDemo11p::handleLowerMsg(cMessage* msg){
+//    std::ostringstream ossDebug; //debug
+//    std::ofstream fDebug("/home/nadia/temp.csv", std::ios::app);//debug
+
+    if (auto *cmsg = dynamic_cast<ClusterCommand*>(msg)) {
+        std::string cmdName = cmsg->getCmd();
+        int ch = cmsg->getClusterHead();
+        int id_temp = static_cast<int>(myId);
+        if (id_temp == ch){
+            amCH = true;
+            amMember = false;
+            clusterMembers.clear();
+            for (int i = 0; i < cmsg->getClusterMembersArraySize(); i++) {
+                int vid = cmsg->getClusterMembers(i);
+                if (vid != myId) { // avoid self in member list
+                    clusterMembers.push_back(vid);
+                }
+            }
+            if (clusterTimer->isScheduled()) {
+                cancelEvent(clusterTimer);
+            }
+            scheduleAt(simTime() + clusterInterval, clusterTimer);
+//            ossDebug << "The vehicle is CH, ID:: "<< myId;
+//            fDebug << ossDebug.str() << "\n";
+        }else{
+            for (int i = 0; i < cmsg->getClusterMembersArraySize(); i++) {
+                if (cmsg->getClusterMembers(i) == myId) {
+                    amMember = true;
+                    amCH = false;
+                    CHId = ch;
+                    clusterMembers.clear();
+//                    ossDebug << "vehicle id is: "<< myId << ", member";
+//                    fDebug << ossDebug.str() << "\n";
+                    if (clusterTimer->isScheduled()) {
+                            cancelEvent(clusterTimer);
+                        }
+                    scheduleAt(simTime() + clusterInterval, clusterTimer);
+                    break;
+                 }
+            }
+
+        }
+    }else{
+        if (amCH){
+            if (DemoSafetyMessage* bsm = dynamic_cast<DemoSafetyMessage*>(msg)){
+                if (bsm->getSenderType() == VEHICLE) {
+                    LAddress::L2Type senderAddress;
+                    senderAddress = bsm->getOriginalSenderId();
+                    if (std::find(clusterMembers.begin(), clusterMembers.end(), senderAddress) != clusterMembers.end()) {
+                        EV_INFO << "[CH " << myId << "] Got beacon from member " << senderAddress
+                                    << ". Rebroadcasting..." << endl;
+                                        // Re-broadcast packet
+//                        packetsSent++;
+//                        bsm->setTxPktsCumulative(packetsSent);
+                        bsm->setSendFromCH(true);
+                        auto* copy = bsm->dup();
+                        sendDown(copy);
+                    }
+
+                }
+            }
+        }
+
+    }
+}
 void TraCIDemo11p::onWSA(DemoServiceAdvertisment* wsa)
 {
     if (currentSubscribedServiceId == -1) {
@@ -95,7 +170,14 @@ void TraCIDemo11p::onWSM(BaseFrame1609_4* frame)
 void TraCIDemo11p::handleSelfMsg(cMessage* msg)
 {
     EV_ERROR<< "HandleSelfMsg, the packet is: "<< msg->getClassName()<<endl;
-    if (TraCIDemo11pMessage* wsm = dynamic_cast<TraCIDemo11pMessage*>(msg)) {
+    if (msg == clusterTimer){
+        amMember = false;
+        amCH = false;
+        CHId = -1;
+        clusterMembers.clear();
+        cancelEvent(clusterTimer);
+    }
+    else if (TraCIDemo11pMessage* wsm = dynamic_cast<TraCIDemo11pMessage*>(msg)) {
         // send this message on the service channel until the counter is 3 or higher.
         // this code only runs when channel switching is enabled
         wsm->setHopCount(wsm->getHopCount() + 1);
@@ -113,6 +195,7 @@ void TraCIDemo11p::handleSelfMsg(cMessage* msg)
     }
     else if (msg->getKind()== SEND_BEACON_EVT){
         DemoSafetyMessage* bsm = new DemoSafetyMessage();
+        packetsSent++;
         int pktSize = intuniform(100, 300);
 
 //        bsm->setBitLength(headerLength);
@@ -133,9 +216,17 @@ void TraCIDemo11p::handleSelfMsg(cMessage* msg)
 //        bsm->addBitLength(beaconLengthBits);
         bsm->setUserPriority(beaconUserPriority);
         bsm->setSenderType(VEHICLE);
+        bsm->setOriginalSenderId(myId);
+        bsm->setTxPktsCumulative(packetsSent);
+
+        bsm->setHasCluster(false);
+        bsm->setSendFromCH(false);
+        if (amCH) bsm->setSendFromCH(true);
+        if (amCH || amMember) bsm->setHasCluster(true);
+
 
         sendDown(bsm);
-        packetsSent++;
+
         scheduleAt(simTime() + beaconInterval, sendBeaconEvt);
     }
 //    else if (msg == beaconTimer) { //beacon test
@@ -207,6 +298,7 @@ void TraCIDemo11p::handlePositionUpdate(cObject* obj)
 void TraCIDemo11p::finish()
 {
     recordScalar("packetsSent", packetsSent);
+    cancelAndDelete(clusterTimer);
 }
 //
 ////beacon
