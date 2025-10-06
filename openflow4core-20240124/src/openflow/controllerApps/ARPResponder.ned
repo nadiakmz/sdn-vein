@@ -21,6 +21,6 @@ simple ARPResponder like AbstractControllerApp
         @class(openflow::ARPResponder);
         @display("i=block/app");
         int priority = default(1);
-        
+        xml arp_cache = default(nullptr); // <-- ADD THIS
         
 }

@@ -21,6 +21,20 @@ void ARPResponder::initialize(){
     //stats
     floodedArp = 0l;
     answeredArp = 0l;
+    // --- ADD THIS LOGIC TO READ THE STATIC CACHE ---
+        if (par("arp_cache").xmlValue() != nullptr) {
+            cXMLElement* arpCache = par("arp_cache").xmlValue();
+            for (cXMLElement* entry = arpCache->getFirstChild(); entry; entry = entry->getNextSibling()) {
+                if (strcmp(entry->getTagName(), "entry") == 0) {
+                    const char* ip = entry->getAttribute("ip");
+                    const char* mac = entry->getAttribute("mac");
+                    if (ip && mac) {
+                        addEntry(ip, MACAddress(mac));
+                        EV_INFO << "ARPResponder: Pre-loaded static ARP entry: IP " << ip << " -> MAC " << mac << endl;
+                    }
+                }
+            }
+        }
 }
 
 
@@ -43,12 +57,26 @@ bool ARPResponder::addEntry(std::string srcIp, MACAddress srcMac){
 void ARPResponder::handlePacketIn(OFP_Packet_In * packet_in_msg){
 
     CommonHeaderFields headerFields = extractCommonHeaderFields(packet_in_msg);
+    EV << "ARP:handling++++++++++++++++++++++++++++++++++++++++++++++++++++++++"<<headerFields.eth_type << endl;
 
     //check if it is an arp packet
     if(headerFields.eth_type == ETHERTYPE_ARP){
+            EV <<"ARP:handling:inside if*********************"<< headerFields.arp_op <<" ,count: "<< ipToMac.count(headerFields.arp_dst_adr.str())<<endl;
+
 
             //add entry if not existent
             addEntry(headerFields.arp_src_adr.str(),headerFields.src_mac);
+
+            EV_ERROR <<"the arp dst addr is: "<< headerFields.arp_dst_adr.str()<<endl;
+
+                      for (const auto& pair : ipToMac) {
+                          const inet::MACAddress& mac = pair.second;
+                          const std::string& ip = pair.first;
+
+                          // Print the MAC address and its corresponding IP address
+                          // We use .str() to convert the MACAddress object to a printable string
+                          EV_INFO << "  MAC: " << mac.str() << "  ->  IP: " << ip << endl;
+                      }
 
             //check arp type
             if(headerFields.arp_op == ARP_REQUEST){
@@ -91,6 +119,7 @@ void ARPResponder::handlePacketIn(OFP_Packet_In * packet_in_msg){
 
 void ARPResponder::receiveSignal(cComponent *src, simsignal_t id, cObject *obj, cObject *details) {
     AbstractControllerApp::receiveSignal(src,id,obj,details);
+    EV << "ARP:recieved++++++++++++++++++++++++++++++++++++++++++++++++++++++++" << endl;
 
     if(id == PacketInSignalId){
         EV << "ARPResponder::PacketIn" << '\n';
@@ -102,6 +131,8 @@ void ARPResponder::receiveSignal(cComponent *src, simsignal_t id, cObject *obj, 
 }
 
 EtherFrame * ARPResponder::createArpReply(IPv4Address srcIp, IPv4Address dstIp, MACAddress srcMac,MACAddress dstMac){
+    EV << "ARP:create++++++++++++++++++++++++++++++++++++++++++++++++++++++++" << endl;
+
     ARPPacket *arpReply = new ARPPacket("controllerArpReply");
     arpReply->setOpcode(ARP_REPLY);
     arpReply->setName("arpReply");

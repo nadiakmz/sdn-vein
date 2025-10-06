@@ -25,6 +25,10 @@ simple LoggingApp like AbstractControllerApp
         @display("i=block/app");
         int priority = default(1);
         string vehicleDataFileName = default("default_log.csv"); // <-- ADD THIS LINE
+        string metricsPath = default("");
 		int districtID = default(0);
 		double inferLocalInterval @unit(s) = default(5s); //10s
+		double networkMetricInterval @unit(s) = default(10s);
+		
+		string svm_rsu_weights = default(""); //svm
 }

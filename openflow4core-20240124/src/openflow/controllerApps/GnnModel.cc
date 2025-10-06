@@ -17,11 +17,16 @@
 #include <cstdlib>      // std::system
 #include <fstream>
 #include <sstream>
+#include <string>
+#include <stdio.h>
+#include <stdlib.h>
 #include "inet/transportlayer/contract/tcp/TCPSocket.h"
+
 #include "inet/common/INETDefs.h"
 #include "inet/controller_messages/ControllerCommand_m.h"
 #include <omnetpp.h>
 #include <chrono>
+#include <sys/stat.h>
 
 
 //#include "openflow/controllerApps/json.hpp"
@@ -31,18 +36,18 @@
 namespace openflow {
 Define_Module(GnnModel);
 std::unordered_map<std::string, std::string> rsuToSwitchMap = {
-    {"10.0.0.14", "open_flow_switch4"},
-    {"10.0.0.18", "open_flow_switch4"},
-    {"10.0.0.22", "open_flow_switch4"},
-    {"10.0.0.26", "open_flow_switch3"},
-    {"10.0.0.30", "open_flow_switch4"},
-    {"10.0.0.34", "open_flow_switch3"},
-    {"10.0.0.38", "open_flow_switch3"},
     {"10.0.0.42", "open_flow_switch4"},
-    {"10.0.0.46", "open_flow_switch3"},
-    {"10.0.0.50", "open_flow_switch2"},
-    {"10.0.0.54", "open_flow_switch1"},
-    {"10.0.0.58", "open_flow_switch2"}
+    {"10.0.0.46", "open_flow_switch4"},
+    {"10.0.0.50", "open_flow_switch4"},
+    {"10.0.0.26", "open_flow_switch3"},
+    {"10.0.0.54", "open_flow_switch4"},
+    {"10.0.0.30", "open_flow_switch3"},
+    {"10.0.0.34", "open_flow_switch3"},
+    {"10.0.0.58", "open_flow_switch4"},
+    {"10.0.0.38", "open_flow_switch3"},
+    {"10.0.0.18", "open_flow_switch2"},
+    {"10.0.0.14", "open_flow_switch1"},
+    {"10.0.0.22", "open_flow_switch2"}
 };
 
 
@@ -66,25 +71,26 @@ void GnnModel::initialize()
         inference_outputs = par("inference_outputs").stdstringValue();
         inference_overhead = par("inference_overhead").stdstringValue();
         controller_overhead = par("controller_overhead").stdstringValue();
+        clusters_output = par("clusters_output").stdstringValue();
 
         ctrl_msgs_sent = 0;
 //        ctrlState     = par("ctrlState").stdstringValue();
 
 
-        ipToRsu["10.0.0.14"] = getModuleByPath("RSUExampleScenario.rsu[0]");
-        ipToRsu["10.0.0.18"] = getModuleByPath("RSUExampleScenario.rsu[1]");
-        ipToRsu["10.0.0.22"] = getModuleByPath("RSUExampleScenario.rsu[2]");
-        ipToRsu["10.0.0.26"] = getModuleByPath("RSUExampleScenario.rsu[3]");
+        ipToRsu["10.0.0.42"] = getModuleByPath("RSUExampleScenario.rsu[0].appl");
+        ipToRsu["10.0.0.46"] = getModuleByPath("RSUExampleScenario.rsu[1].appl");
+        ipToRsu["10.0.0.50"] = getModuleByPath("RSUExampleScenario.rsu[2].appl");
+        ipToRsu["10.0.0.26"] = getModuleByPath("RSUExampleScenario.rsu[3].appl");
 
-        ipToRsu["10.0.0.30"] = getModuleByPath("RSUExampleScenario.rsu[4]");
-        ipToRsu["10.0.0.34"] = getModuleByPath("RSUExampleScenario.rsu[5]");
-        ipToRsu["10.0.0.38"] = getModuleByPath("RSUExampleScenario.rsu[6]");
-        ipToRsu["10.0.0.42"] = getModuleByPath("RSUExampleScenario.rsu[7]");
+        ipToRsu["10.0.0.54"] = getModuleByPath("RSUExampleScenario.rsu[4].appl");
+        ipToRsu["10.0.0.30"] = getModuleByPath("RSUExampleScenario.rsu[5].appl");
+        ipToRsu["10.0.0.34"] = getModuleByPath("RSUExampleScenario.rsu[6].appl");
+        ipToRsu["10.0.0.58"] = getModuleByPath("RSUExampleScenario.rsu[7].appl");
 
-        ipToRsu["10.0.0.46"] = getModuleByPath("RSUExampleScenario.rsu[8]");
-        ipToRsu["10.0.0.50"] = getModuleByPath("RSUExampleScenario.rsu[9]");
-        ipToRsu["10.0.0.54"] = getModuleByPath("RSUExampleScenario.rsu[10]");
-        ipToRsu["10.0.0.58"] = getModuleByPath("RSUExampleScenario.rsu[11]");
+        ipToRsu["10.0.0.38"] = getModuleByPath("RSUExampleScenario.rsu[8].appl");
+        ipToRsu["10.0.0.18"] = getModuleByPath("RSUExampleScenario.rsu[9].appl");
+        ipToRsu["10.0.0.14"] = getModuleByPath("RSUExampleScenario.rsu[10].appl");
+        ipToRsu["10.0.0.22"] = getModuleByPath("RSUExampleScenario.rsu[11].appl");
 
         inferTimer = new cMessage("inferTimer");
         scheduleAt(simTime() + inferInterval, inferTimer);
@@ -165,15 +171,17 @@ void GnnModel::initialize()
                 << " --model " << modelPath
                 << " --merged " << mergedCsv
                 << " --rsu-positions " << rsuPositions
-                << " --simtime " << SIMTIME_DBL(simTime())
+                << " --simtime " << SIMTIME_DBL(start)
                 << " --out-decisions " << outDecisions
-                << " --T " << inferInterval
+//                << " --T " << inferInterval
                 << " --out-inference "<< inference_outputs
                 << " --out-inference-overhead "<< inference_overhead
-                << " > /tmp/python_output.log 2>&1"; // This is the magic line
+                << " --out-clusters "<< clusters_output
+                << " >> /tmp/python_output_infer.log 2>&1"; // This is the magic line
 
 
         auto wallAfterPy = std::chrono::steady_clock::now();
+        double t_launch_ms = std::chrono::duration<double, std::milli>(wallAfterPy - wallStart).count();
 
         EV_INFO << "[Controller] Calling: " << cmd.str() << "\n";
         int rc = std::system(cmd.str().c_str());
@@ -186,99 +194,167 @@ void GnnModel::initialize()
         std::ifstream f(outDecisions);
         if (!f.good()) {
             EV_WARN << "[Controller] Could not open decisions file: " << outDecisions << "\n";
+            writeControllerOverhead(t_launch_ms, 0.0, 0);
             return;
         }
-//        json j; f >> j;
 
-        applyDecisions(outDecisions);
-        auto wallAfterApply = std::chrono::steady_clock::now();
+        applyDecisions(outDecisions, SIMTIME_DBL(start));
 
-        // compute times (wall clock, not simtime)
-        double t_launch_ms = std::chrono::duration<double, std::milli>(wallAfterPy - wallStart).count();
-        double t_apply_ms  = std::chrono::duration<double, std::milli>(wallAfterApply - wallAfterPy).count();
-
-
-
-        // log
-        std::ostringstream oss;
-        oss << SIMTIME_DBL(simTime()) << "," << t_launch_ms << "," << t_apply_ms << "," << ctrl_msgs_sent;
-        appendCsv(controller_overhead,
-                  "simTime,t_launch_ms,t_apply_ms,ctrl_msgs_sent",
-                  oss.str());
-
-    }
-    void GnnModel::applyDecisions(const std::string& path) {
-        std::ifstream f(path);
-        if (!f.good()) {
-                EV_WARN << "[Controller] Could not open decisions file: " << path << "\n";
+        std::ifstream fcluster(clusters_output);
+        if (!fcluster.good()) {
+                EV_WARN << "[Controller] Could not open clusters file: " << clusters_output << "\n";
+                writeControllerOverhead(t_launch_ms, 0.0, 0);
                 return;
         }
-        static int decisionId = 0;
+        applyClusters(clusters_output,SIMTIME_DBL(start));
+
+        auto wallAfterApply = std::chrono::steady_clock::now();
+        double t_apply_ms  = std::chrono::duration<double, std::milli>(wallAfterApply - wallAfterPy).count();
+        writeControllerOverhead(t_launch_ms, t_apply_ms, 1);
+
+
+    }
+    void GnnModel::writeControllerOverhead(double t_launch_ms, double t_apply_ms, int hasDecision){
+        // log
+        std::ostringstream oss;
+        oss << SIMTIME_DBL(simTime()) << "," << t_launch_ms << "," << t_apply_ms << "," << ctrl_msgs_sent<< "," << hasDecision;
+        //        appendCsv(controller_overhead,
+        //                  "simTime,t_launch_ms,t_apply_ms,ctrl_msgs_sent",
+        //                  oss.str());
+
+        struct stat st;
+        bool writeHeader = (stat(controller_overhead.c_str(), &st) != 0 || st.st_size == 0);
+
+        std::ofstream fr(controller_overhead, std::ios::app);
+        if (writeHeader) fr << "simTime,t_launch_ms,t_apply_ms,ctrl_msgs_sent,hasDecision" << "\n";
+        fr << oss.str() << "\n";
+    }
+    // in GnnModel.cc
+    void GnnModel::applyClusters(const std::string& clustersFile, double simNow) {
+        int window = (int)SIMTIME_DBL(inferInterval);
+        const int lower   = ((int) simNow) - window;
+        std::unordered_map<std::string, std::vector<std::pair<int, std::vector<int>>>> clustersByRSU;
+        // Seen set to keep only the latest entry per (rsuIP, CH) while scanning backwards
+        std::unordered_set<std::string> seen; // key = rsuIP + "|" + chStr
+
+
+        std::ifstream f(clustersFile);
+
+        std::vector<std::string> lines;
         std::string line;
-           while (std::getline(f, line)) {
-               if (line.rfind("t=", 0) == 0) {
-                   EV_INFO << "[Controller] Simulation time " << line << "\n";
-                   continue;
-               }
+        std::getline(f, line); // skip header
+        while (std::getline(f, line)) lines.push_back(std::move(line));
+        f.close();
+        // 2) Walk backwards: most recent rows first
+        for (auto it = lines.rbegin(); it != lines.rend(); ++it) {
+            const std::string& row = *it;
+            if (row.empty()) continue;
+            std::istringstream iss(row);
+            std::string simTimeStr, rsuIP, chStr, membersStr;
 
-               std::string rsuIP;
-               if (line.find("RSU=") != std::string::npos) {
-                   auto pos = line.find(" ");
-                   rsuIP = line.substr(4, pos - 4);  // extract after "RSU="
-               }
+            if (!std::getline(iss, simTimeStr, ',')) continue;
+            if (simTimeStr.empty()) continue;
 
-               if (line.find("ATTACH:") != std::string::npos) {
-                   std::vector<int> vehicles;
-                   std::istringstream iss(line.substr(line.find("ATTACH:") + 7));
-                   int vid;
-                   while (iss >> vid) {
-                       vehicles.push_back(vid);
-                   }
-                   sendAttachBatch(vehicles, rsuIP);
-               }
+            int simTime = std::stoi(simTimeStr);
+            if (simTime < lower) break;
+            if (!std::getline(iss, rsuIP, ',')) continue;
+            if (!std::getline(iss, chStr, ',')) continue;
+            if (!std::getline(iss, membersStr)) continue;
+            // Deduplicate the latest occurrence for (RSU, CH)
+            std::string key = rsuIP + "|" + chStr;
+            if (seen.find(key) != seen.end()) continue;
+            seen.insert(key);
+            int clusterHead = std::stoi(chStr); ;
 
-               else if (line.find("REROUTE:") != std::string::npos) {
-                   std::string rest = line.substr(line.find("REROUTE:") + 8);
-                   int vid;
-                   std::string tgt;
-                   char arrow;
-                   std::istringstream iss(rest);
-                   iss >> vid >> arrow >> tgt;  // e.g. "104->10.0.0.3"
-                   sendReroute(vid, tgt);
-           }
-           }
+                            // Parse members (space-separated ints)
+            std::vector<int> members;
+            std::istringstream mss(membersStr);
+            int v;
+            while (mss >> v) {
+                members.push_back(v);
+            }
+            clustersByRSU[rsuIP].push_back({clusterHead, std::move(members)});
+        }
+        for (const auto& [rsuIP, clusters] : clustersByRSU) {
+            for (const auto& [ch, members] : clusters) {
+                sendClusterInfo(rsuIP, ch, members);
+
+                // takeActionForCluster(rsuIP, ch, members); // if you also act here
+            }
+        }
+
+
     }
 
-//        auto decisions = j["decisions"];
-//        for (const auto& d : decisions) {
-//                std::string rsuIP = d.value("rsuIP", "");
-//                EV_INFO << "[Controller] Decisions for RSU " << rsuIP << "\n";
-//
-//                // Handle detach
-//                if (d.contains("detach")) {
-//                    for (auto v : d["detach"]) {
-//                        EV_INFO << "  Detach vehicle " << v << " from " << rsuIP << "\n";
-//                        // TODO: implement actual detach in your RSU/vehicle modules
-//                    }
-//                }
-//
-//                // Handle attach
-//                if (d.contains("attach")) {
-//                    std::vector<int> vehicles = d["attach"].get<std::vector<int>>();
-//                    sendAttachBatch(vehicles, rsuIP);
-//                }
-//                // Handle reroute
-//                if (d.contains("reroute")) {
-//                    for (auto r : d["reroute"]) {
-//                        int v = r.value("vehicle", -1);
-//                        std::string tgt = r.value("toRSU", "");
-//                        EV_INFO << "  Reroute vehicle " << v << " via RSU " << tgt << "\n";
-//                        sendReroute(v,tgt);
-//                        // TODO: update flow tables or routes here
-//                    }
-//                }
-//            }
+    void GnnModel::applyDecisions(const std::string& path, double simNow) {
+        //-------------------debug----------------------
+//        std::ostringstream ossDebug;
+//        std::ofstream fdebug('/home/nadia/controller_debug.csv', std::ios::app);
 
+        std::ifstream f(path);
+        static int decisionId = 0;
+
+        std::vector<std::string> lines;
+        std::string line;
+        std::getline(f, line); // skip header
+        while (std::getline(f, line)) lines.push_back(std::move(line));
+        f.close();
+
+        int Max_t = 0;
+        for (auto it = lines.rbegin(); it != lines.rend(); ++it) {
+            const std::string& row = *it;
+            if (row.empty()) continue;
+            std::istringstream iss(row);
+            std::string simTime, decisionId, type, vehicleID, srcRSU, dstRSU;
+            if (!std::getline(iss, simTime, ',')) continue;
+            //            std::getline(iss, simTime, ',');
+            if (simTime.empty()) continue;
+            int simTime_check = std::stoi(simTime);
+
+            if (simTime_check >= Max_t) Max_t = simTime_check;
+            else break;
+            std::getline(iss, decisionId, ',');
+            std::getline(iss, type, ',');
+            std::getline(iss, vehicleID, ',');
+            std::getline(iss, srcRSU, ',');
+            std::getline(iss, dstRSU, ',');
+            if (type.compare("attach") == 0) {
+
+                std::vector<int> members;
+                std::istringstream mss(vehicleID);
+                int v;
+                while (mss >> v) {
+                    members.push_back(v);
+                }
+
+//                lastAttachState[dstRSU] = {members};
+
+
+                sendAttachBatch(members, dstRSU);
+            }else if (type.compare("reroute") == 0 ){
+                int vid = std::stoi(vehicleID);
+//                sendReroute(vid, dstRSU, srcRSU, simTime);
+                std::vector<int> members;
+                members.push_back(vid);
+                sendAttachBatch(members, dstRSU);
+                sendDetachBatch(members, srcRSU, simTime);
+
+            }else if (type.compare("detach") == 0){
+                std::vector<int> members;
+                std::istringstream mss(vehicleID);
+                int v;
+                while (mss >> v) {
+                    members.push_back(v);
+                }
+
+                sendDetachBatch(members, dstRSU, simTime);
+            }
+
+
+        }
+
+
+    }
 
         // helper to print vectors
     static std::string vecToStr(const std::vector<int>& v) {
@@ -286,6 +362,35 @@ void GnnModel::initialize()
         for (size_t i=0;i<v.size();++i) { if (i) oss<<","; oss<<v[i]; }
         oss << "]";
         return oss.str();
+    }
+    void GnnModel::sendClusterInfo(const std::string& rsuIP, int clusterHead, const std::vector<int>& members) {
+        auto it = ipToRsu.find(rsuIP);
+        if (it == ipToRsu.end()) {
+            EV_WARN << "[Controller] Unknown RSU IP " << rsuIP << "\n";
+            return;
+        }
+
+        // Create a controller command message
+        auto *cmdMsg = new ControllerCommand("clusterInfo");
+        cmdMsg->setCmd("cluster");  // New command type "cluster"
+        cmdMsg->setTargetRSU(rsuIP.c_str());
+
+        // Set cluster head
+        cmdMsg->setClusterHead(clusterHead);
+
+        // Set members (excluding CH if you want only "followers")
+        cmdMsg->setVehicleIDsArraySize(members.size());
+        for (size_t i = 0; i < members.size(); i++) {
+            cmdMsg->setVehicleIDs(i, members[i]);
+        }
+
+        // Send directly to RSU
+        sendDirect(cmdMsg, it->second, "controlIn");
+        EV_INFO << "[Controller] Sent cluster info to RSU " << rsuIP
+                << " head=" << clusterHead
+                << " members=" << vecToStr(members) << "\n";
+
+        ctrl_msgs_sent++;
     }
 
     void GnnModel::sendAttachBatch(const std::vector<int>& vehicles, const std::string& targetRSU) {
@@ -300,18 +405,47 @@ void GnnModel::initialize()
         cmdMsg->setCmd("attach");
         cmdMsg->setTargetRSU(targetRSU.c_str());
         cmdMsg->setVehicleIDsArraySize(vehicles.size());
+
         for (size_t i = 0; i < vehicles.size(); i++) {
             cmdMsg->setVehicleIDs(i, vehicles[i]);
         }
 
-
+//        for (size_t i = 0; i < vehicles.size(); i++) {
+//            std::stringstream cmd;
+//            cmd << "sh -c \""<< "echo attach rsu=" << targetRSU
+//                << "echo member " << vehicles[i] << " >> /tmp/decision.log"
+//                << "\"";
+//            int rc = std::system(cmd.str().c_str());
+//            (void)rc;
+//        }
         sendDirect(cmdMsg, it->second, "controlIn");
         EV_INFO << "[Controller] Sent attach batch of " << vehicles.size()
                     << " vehicles to RSU " << targetRSU << "\n";
         ctrl_msgs_sent++;
     }
+    void GnnModel::sendDetachBatch(const std::vector<int>& vehicles, const std::string& targetRSU, std::string& rrTime) {
+        if (vehicles.empty()) return;
+        auto it = ipToRsu.find(targetRSU);
+        if (it == ipToRsu.end()) {
+            EV_WARN << "[Controller] Unknown RSU IP " << targetRSU << "\n";
+            return;
+        }
+        auto *cmdMsg = new ControllerCommand("detachBatch");
+        cmdMsg->setCmd("detach");
+        cmdMsg->setTargetRSU(targetRSU.c_str());
+        cmdMsg->setVehicleIDsArraySize(vehicles.size());
+        cmdMsg->setRerouteTime(rrTime.c_str());
 
-    void GnnModel::sendReroute(int vehicleID, const std::string& targetIP) {
+        for (size_t i = 0; i < vehicles.size(); i++) {
+                    cmdMsg->setVehicleIDs(i, vehicles[i]);
+        }
+
+        sendDirect(cmdMsg, it->second, "controlIn");
+        EV_INFO << "[Controller] Sent detach batch of " << vehicles.size()
+                            << " vehicles to RSU " << targetRSU << "\n";
+        ctrl_msgs_sent++;
+    }
+    void GnnModel::sendReroute(int vehicleID, const std::string& targetIP,const std::string& srcRSU, std::string& rrTime) {
         auto it = ipToRsu.find(targetIP);
         if (it == ipToRsu.end()) {
             EV_WARN << "[Controller] Unknown RSU IP " << targetIP << "\n";
@@ -321,6 +455,8 @@ void GnnModel::initialize()
         auto *cmdMsg = new ControllerCommand("reroute");
         cmdMsg->setCmd("reroute");
         cmdMsg->setTargetRSU(targetIP.c_str());
+        cmdMsg->setRerouteTime(rrTime.c_str());
+
         std::vector<int> vehicles = { vehicleID };
         cmdMsg->setVehicleIDsArraySize(vehicles.size());
         for (size_t i = 0; i < vehicles.size(); i++) {

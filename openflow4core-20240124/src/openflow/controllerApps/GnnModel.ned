@@ -36,6 +36,7 @@ simple GnnModel like AbstractControllerApp
         string inference_overhead = default("../../../model/inference_overhead.csv");
         string inference_outputs = default("../../../model/inference_outputs.csv");
         string controller_overhead = default("../../../model/controller_overhead.csv");
+        string clusters_output = default("../../../model/clusters_output.csv");
 //        string glob = default("");
 		string files1 = default("");
 		string files2 = default("");

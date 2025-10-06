@@ -38,10 +38,14 @@ class GnnModel : public AbstractControllerApp
   private:
     cMessage* inferTimer = nullptr;
     simtime_t inferInterval;
-    std::string pyExec, inferScript, modelPath, mergedCsv, rsuPositions, outDecisions, mergeScript, inference_outputs,inference_overhead, controller_overhead, files1, files2, files3, files4 ;
+    std::string pyExec, inferScript, modelPath, mergedCsv, rsuPositions, outDecisions, mergeScript, inference_outputs,inference_overhead, controller_overhead, clusters_output, files1, files2, files3, files4 ;
     int ctrl_msgs_sent = 0;
     struct RState { int currentCH = -1; double lastSwitch = -1e9; };
     std::unordered_map<std::string, RState> rsuState; // key: rsuIP
+//    std::map<std::string, std::pair<int, std::vector<int>>> lastClusterState;
+    std::map<std::string, std::vector<std::pair<int, std::vector<int>>>> lastClusterState;
+
+    std::map<std::string, std::vector<int>> lastAttachState;
 
     std::map<std::string, cModule*> ipToRsu;
 
@@ -49,12 +53,15 @@ class GnnModel : public AbstractControllerApp
 
     virtual void handleMessage(cMessage *msg) override;
     void finish() override;
-    void sendReroute(int vehicleID, const std::string& targetIP);
+    void sendReroute(int vehicleID, const std::string& targetIP,const std::string& srcRSU,  std::string& rrTime);
     void sendAttachBatch(const std::vector<int>& vehicles, const std::string& targetRSU);
-    void applyDecisions(const std::string& path);
+    void applyDecisions(const std::string& path, double simNow);
     void runInferenceOnce();
     inline void appendCsv(const std::string& path, const std::string& header, const std::string& line);
-
+    void writeControllerOverhead(double t_launch_ms, double t_apply_ms, int hasDecision);
+    void applyClusters(const std::string& clustersFile, double simNow);
+    void sendClusterInfo(const std::string& rsuIP, int clusterHead, const std::vector<int>& members);
+    void sendDetachBatch(const std::vector<int>& vehicles, const std::string& targetRSU, std::string& rrTime);
   public:
     virtual void initialize() override;
 
